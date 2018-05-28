@@ -3,15 +3,17 @@ __COMMON EQU 1
 
 ; Helpers for internals accessing common parts
 
-; Handles trap for status flag \1.
-; If trap active, BCDE are passed to the handler, and passed back unmodified.
-; The status flag is also passed in A.
-; Otherwise, sets the status flag.
-; Clobbers A, HL
-; Enable tail-call optimizations by optionally passing \2 == "tail call".
+; Handles trap for status flag \1 and operation number \2.
+; If trap active, BCDE are passed to the handler.
+; The status flag and operation number is also passed in A, with operation number
+; in the most signifigant 5 bits and status flag in the bottom 3.
+; All registers are passed back from the trap handler unmodified.
+; If no trap handler, sets the status flag.
+; Clobbers A, HL, others depending on trap handler contract.
+; Enable tail-call optimizations by optionally passing \3 == "tail call".
 HandleTrap: MACRO
-IF _NARGS > 1
-tail_call SET STRCMP(\2, "tail call") == 0
+IF _NARGS > 2
+tail_call SET STRCMP(\3, "tail call") == 0
 ELSE
 tail_call SET 0
 ENDC
@@ -32,7 +34,7 @@ ENDC
 	ld A, [HL-] ; A = bottom byte of addr
 	ld H, [HL] ; H = top byte of addr
 	ld L, A ; HL = addr
-	ld A, \1
+	ld A, (\1) | ((\2) << 3)
 IF tail_call
 	jp [HL]
 ELSE

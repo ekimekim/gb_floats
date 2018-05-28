@@ -72,9 +72,10 @@ ENDM
 ; or disable the trap if DE == $ffff.
 ; A trap handler is a routine that is called upon the given exception occurring,
 ; instead of setting the corresponding status flag.
-; It will receive A = the status flag that triggered it, as well as optionally
-; extra values for BCDE depending on the triggering operation.
-; In some cases it should return a value in BCDE, depending on the triggering operation.
+; It will receive A = ooooosss, where o is the operation that was being performed,
+; and s is the status flag that triggered it.
+; It may also receive extra values for BCDE depending on the triggering operation.
+; In some cases it should return a value, depending on the triggering operation.
 ; Clobbers A, HL.
 SetTrapHandler::
 	_GetHandlerAddr
