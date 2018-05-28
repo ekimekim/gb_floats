@@ -1,3 +1,4 @@
 A library implementing 16, 32 and 64-bit floats for the Gameboy CPU.
+It generates object files, which are set to put all code in ROM0.
 
 Currently incomplete.
