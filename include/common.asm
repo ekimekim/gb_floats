@@ -3,21 +3,22 @@ __COMMON EQU 1
 
 ; Helpers for internals accessing common parts
 
-; Handles trap for status flag \1 and operation number \2.
-; If trap active, BCDE are passed to the handler.
-; The status flag and operation number is also passed in A, with operation number
-; in the most signifigant 5 bits and status flag in the bottom 3.
-; All registers are passed back from the trap handler unmodified.
+; Handles trap for status flag \1, operation number \2 and format \3.
+; If trap active, BCDE are passed to the handler unchanged.
+; A is set to the operation number and format.
+; HL is set to \5 if given.
+; All registers are passed back from the trap handler unchanged.
 ; If no trap handler, sets the status flag.
 ; Clobbers A, HL, others depending on trap handler contract.
-; Enable tail-call optimizations by optionally passing \3 == "tail call".
+; Enable tail-call optimizations by optionally passing \4 == "tail call".
 HandleTrap: MACRO
-IF _NARGS > 2
-tail_call SET STRCMP(\3, "tail call") == 0
+IF _NARGS > 3
+tail_call SET STRCMP(\4, "tail call") == 0
 ELSE
 tail_call SET 0
 ENDC
-	ld HL, FloatTraps + 2 * ((\1) - 3)
+dest_handler SET FloatTraps + 3 * ((\1) - 3)
+	ld HL, dest_handler + 1
 	ld A, [HL+]
 	and [HL] ; A can only still be $ff if HL == $ffff
 	inc A ; set z if A was $ff, ie. if HL was $ffff ie. no trap.
@@ -31,15 +32,15 @@ ELSE
 	jr .end\@
 ENDC
 .trap\@
-	ld A, [HL-] ; A = bottom byte of addr
-	ld H, [HL] ; H = top byte of addr
-	ld L, A ; HL = addr
 	ld A, (\1) | ((\2) << 3)
+IF _NARGS > 4
+	ld HL, \5
+ENDC
 IF tail_call
-	jp [HL]
+	jp dest_handler
 ELSE
 	; call [HL] - there's no non-immediate call instr, so we use a trampoline.
-	call _Call_HL
+	call dest_handler
 .end\@
 ENDC
 ENDM

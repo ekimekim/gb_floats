@@ -1,7 +1,8 @@
 IF !DEF(__FLOAT_FLAGS)
 __FLOAT_FLAGS EQU 1
 
-// Defines constants for working with flag values.
+// Defines constants for working with float library.
+// This include file is intended for external use.
 
 // Rounding modes:
 rsset 0
@@ -19,5 +20,16 @@ FLAG_UNDERFLOW rb 1
 FLAG_OVERFLOW rb 1
 FLAG_DIV_BY_ZERO rb 1
 FLAG_INVALID rb 1
+
+// Available formats. Passed into trap handlers.
+rsset 0
+FORMAT_HALF rb 1
+FORMAT_SINGLE rb 1
+FORMAT_DOUBLE rb 1
+FORMAT_RESERVED rb 1
+
+// Available operations. Passed into trap handlers.
+rsset 0
+// TODO
 
 ENDC

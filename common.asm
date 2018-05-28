@@ -15,16 +15,33 @@ FloatFlags::
 
 SECTION "Floating point trap addresses", WRAM0
 
-; Addresses for trap handlers. $ffff is used as a sentinel value for a disabled trap.
-; Addresses are stored big-endian and in the same order as the status flags
+; Trampolines for trap handlers. $ffff is used as a sentinel value for a disabled trap.
+; Each set of 3 bytes forms a routine "jp NN" which immediately tail-calls the handler.
+; Addresses are stored little-endian and in the same order as the status flags
 ; (ie. INEXACT, UNDERFLOW, OVERFLOW, DIV_BY_ZERO, INVALID)
 FloatTraps:
-	ds 2 * 5
+	ds 3 * 5
 
 SECTION "Floating point common methods"
 
 ; Note explicit use of ldh as the assembler can't work out these values
 ; will eventually be resolved by the linker to hram addresses.
+
+; Do basic initialization.
+; Clobbers A, HL
+InitFloat::
+	xor A
+	ld [FloatFlags], A
+	dec A ; A = ff
+	ld HL, FloatTraps
+	REPT 5
+	ld [HL], $c3 ; c3 is opcode for jp NN
+	inc HL
+	ld [HL+], A
+	ld [HL+], A ; set addr to $ffff
+	ENDR
+	ret
+
 
 ; Sets rounding mode to that given in B. Clobbers A.
 SetRounding::
@@ -63,17 +80,18 @@ ClearFlags::
 
 ; Sets HL to the handler slot for trap handler for status flag A.
 _GetHandlerAddr: MACRO
+	ld H, A
 	add A ; A = 2 * A
-	; HL = FloatTraps - 2*3 + 2*A = FloatTraps + 2*(A-3) = &FloatTraps[A-3]
-	LongAddToA (FloatTraps - 2 * 3), HL
+	add H ; A = 3 * A
+	; HL = FloatTraps - 3*3 + 1 + 3*A = FloatTraps + 3*(A-3) + 1 = &FloatTraps[A-3] + 1
+	LongAddToA (FloatTraps - 3 * 3 + 1), HL
 ENDM
 
 ; Set the trap handler for status flag A to DE,
 ; or disable the trap if DE == $ffff.
 ; A trap handler is a routine that is called upon the given exception occurring,
 ; instead of setting the corresponding status flag.
-; It will receive A = ooooosss, where o is the operation that was being performed,
-; and s is the status flag that triggered it.
+; It will receive A = ooooooff where oooooo is the triggering operation, and ff is its format.
 ; It may also receive extra values for BCDE depending on the triggering operation.
 ; In some cases it should return a value, depending on the triggering operation.
 ; Clobbers A, HL.
@@ -93,9 +111,3 @@ GetTrapHandler::
 	ld D, A
 	ld E, [HL]
 	ret
-
-; A trampoline that is needed to simulate 'call [HL]' when calling traps.
-; Use it by calling it after setting HL. When the routine pointed to by HL returns,
-; it will return to the caller.
-_Call_HL::
-	jp [HL]
