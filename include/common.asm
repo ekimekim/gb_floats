@@ -6,14 +6,17 @@ __COMMON EQU 1
 ; Handles trap for status flag \1, operation number \2 and format \3.
 ; If trap active, BCDE are passed to the handler unchanged.
 ; A is set to the operation number and format.
-; HL is set to \5 if given.
+; HL is set to \4 if given and not "ignore". \4 may also be set to "stack" to take HL
+; from the top of the stack instead (ie. it will pop HL).
 ; All registers are passed back from the trap handler unchanged.
 ; If no trap handler, sets the status flag.
 ; Clobbers A, HL, others depending on trap handler contract.
-; Enable tail-call optimizations by optionally passing \4 == "tail call".
+; Enable tail-call optimizations by optionally passing \5 == "tail call".
 HandleTrap: MACRO
-IF _NARGS > 3
-tail_call SET STRCMP(\4, "tail call") == 0
+IF _NARGS > 4
+// We use STRIN instead of STRCMP to ignore whitespace.
+// Its fine as long as valid values aren't substrings of each other
+tail_call SET STRIN(\5, "tail call") > 0
 ELSE
 tail_call SET 0
 ENDC
@@ -33,8 +36,12 @@ ELSE
 ENDC
 .trap\@
 	ld A, (\1) | ((\2) << 3)
-IF _NARGS > 4
-	ld HL, \5
+IF _NARGS > 3
+IF STRIN(\4, "stack") > 0
+	pop HL
+ELIF STRIN(\4, "ignore") == 0
+	ld HL, \4
+ENDC
 ENDC
 IF tail_call
 	jp dest_handler
